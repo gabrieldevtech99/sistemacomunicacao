@@ -43,7 +43,7 @@ const App = () => {
                   <Route path="/auth" element={<Auth />} />
 
                   {/* Public-ish (needs auth but no specific permission) */}
-                  <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/" element={<ProtectedRoute permission="dashboard"><Dashboard /></ProtectedRoute>} />
 
                   {/* Cadastros */}
                   <Route path="/clientes" element={<ProtectedRoute permission="cadastros"><Clientes /></ProtectedRoute>} />

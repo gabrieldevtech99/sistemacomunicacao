@@ -127,6 +127,10 @@ export function useOrcamentos() {
         chave_pix: input.chave_pix || null,
         banco: input.banco || null,
         vendedor_nome: input.vendedor_nome || null,
+        numero_manual: input.numero_manual || '',
+        numero_orcamento: input.numero_manual || '',
+        endereco_entrega: input.endereco_entrega || null,
+        descricao_servico: input.descricao_servico || null,
       };
 
       const { data: orcamento, error: orcError } = await supabase
@@ -188,9 +192,10 @@ export function useOrcamentos() {
         chave_pix: input.chave_pix || null,
         banco: input.banco || null,
         vendedor_nome: input.vendedor_nome || null,
-        numero_manual: (input as any).numero_manual || null,
-        endereco_entrega: (input as any).endereco_entrega || null,
-        descricao_servico: (input as any).descricao_servico || null,
+        numero_manual: input.numero_manual || '',
+        numero_orcamento: input.numero_manual || '',
+        endereco_entrega: input.endereco_entrega || null,
+        descricao_servico: input.descricao_servico || null,
       };
 
       const { data: orcamento, error: orcError } = await supabase

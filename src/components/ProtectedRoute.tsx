@@ -3,6 +3,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserPermissions, Permission } from "@/hooks/useUserPermissions";
 import { Loader2 } from "lucide-react";
 
+const PERMISSION_ROUTES: Record<Permission, string> = {
+    dashboard: "/",
+    cadastros: "/clientes",
+    comercial: "/orcamentos",
+    financeiro: "/contas-pagar",
+    producao: "/producao",
+    configuracoes: "/configuracoes",
+};
+
 interface ProtectedRouteProps {
     children: React.ReactNode;
     permission?: Permission;
@@ -11,7 +20,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, permission, requireAdmin }: ProtectedRouteProps) {
     const { user, loading: authLoading } = useAuth();
-    const { hasPermission, isAdmin, isLoading: permissionsLoading } = useUserPermissions();
+    const { hasPermission, isAdmin, permissions, isLoading: permissionsLoading } = useUserPermissions();
     const location = useLocation();
 
     if (authLoading || permissionsLoading) {
@@ -31,7 +40,10 @@ export function ProtectedRoute({ children, permission, requireAdmin }: Protected
     }
 
     if (permission && !hasPermission(permission)) {
-        return <Navigate to="/" replace />;
+        // Find the first permitted route to redirect to (avoid infinite loop)
+        const firstPermitted = permissions.find(p => p !== permission);
+        const redirectTo = firstPermitted ? PERMISSION_ROUTES[firstPermitted] : "/auth";
+        return <Navigate to={redirectTo} replace />;
     }
 
     return <>{children}</>;

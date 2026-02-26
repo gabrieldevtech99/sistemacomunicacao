@@ -46,6 +46,7 @@ export interface OSInput {
     descricao?: string;
     cliente_id?: string;
     orcamento_id?: string;
+    orcamento_origem_id?: string;
     status?: StatusOS;
     prioridade?: PrioridadeOS;
     data_previsao?: string;
@@ -150,6 +151,7 @@ export function useOrdemServico() {
                     descricao: input.descricao || null,
                     cliente_id: input.cliente_id || null,
                     orcamento_id: input.orcamento_id || null,
+                    orcamento_origem_id: input.orcamento_origem_id || null,
                     status: input.status || "aberta",
                     prioridade: input.prioridade || "normal",
                     data_previsao: input.data_previsao || null,

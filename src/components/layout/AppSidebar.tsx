@@ -55,7 +55,7 @@ interface NavItem {
 }
 
 const navigation: NavItem[] = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, permission: "dashboard" },
   { type: "section", name: "CADASTROS", permission: "cadastros" },
   { name: "Clientes", href: "/clientes", icon: Users, permission: "cadastros" },
   { name: "Fornecedores", href: "/fornecedores", icon: Truck, permission: "cadastros" },

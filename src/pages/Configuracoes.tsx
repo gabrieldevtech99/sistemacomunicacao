@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Users, Bell, Shield } from "lucide-react";
+import { Building2, Users, Bell, Shield, Trash2 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,8 @@ export default function Configuracoes() {
   });
   const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>([]);
   const [criandoUsuario, setCriandoUsuario] = useState(false);
+  const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<EmpresaUsuario | null>(null);
+  const [excluindoUsuario, setExcluindoUsuario] = useState(false);
 
   useEffect(() => {
     if (empresaAtiva) {
@@ -237,6 +239,35 @@ export default function Configuracoes() {
     );
   };
 
+  const handleExcluirUsuario = async () => {
+    if (!usuarioParaExcluir || !empresaAtiva) return;
+    setExcluindoUsuario(true);
+    try {
+      // Remover permissões
+      await supabase
+        .from("user_permissions")
+        .delete()
+        .eq("empresa_id", empresaAtiva.id)
+        .eq("user_id", usuarioParaExcluir.user_id);
+
+      // Remover vínculo com a empresa
+      const { error } = await supabase
+        .from("empresa_usuarios")
+        .delete()
+        .eq("id", usuarioParaExcluir.id);
+
+      if (error) throw error;
+
+      toast.success("Usuário removido com sucesso!");
+      setUsuarioParaExcluir(null);
+      await loadUsuarios();
+    } catch (error: any) {
+      toast.error("Erro ao remover usuário: " + error.message);
+    } finally {
+      setExcluindoUsuario(false);
+    }
+  };
+
   return (
     <MainLayout>
       <div className="mb-8">
@@ -361,9 +392,21 @@ export default function Configuracoes() {
                           )}
                         </div>
                       </div>
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full capitalize">
-                        {u.role === "admin" ? "Administrador" : "Usuário"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full capitalize">
+                          {u.role === "admin" ? "Administrador" : "Usuário"}
+                        </span>
+                        {isAdmin && u.user_id !== user?.id && u.role !== "admin" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setUsuarioParaExcluir(u)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -488,7 +531,7 @@ export default function Configuracoes() {
             <Separator />
             <div className="grid gap-3">
               <Label className="text-base font-semibold">Permissões de Acesso</Label>
-              <p className="text-sm text-muted-foreground">Dashboard é sempre acessível. Selecione os módulos adicionais:</p>
+              <p className="text-sm text-muted-foreground">Selecione os módulos que o usuário terá acesso:</p>
               {PERMISSION_OPTIONS.map((opt) => (
                 <div key={opt.value} className="flex items-start space-x-3">
                   <Checkbox
@@ -513,6 +556,32 @@ export default function Configuracoes() {
             <Button onClick={handleCriarUsuario} disabled={criandoUsuario}>
               {criandoUsuario && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Criar Usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Confirmar Exclusão de Usuário */}
+      <Dialog open={!!usuarioParaExcluir} onOpenChange={(open) => !open && setUsuarioParaExcluir(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Excluir Usuário</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja remover <strong>{usuarioParaExcluir?.profile?.nome || "este usuário"}</strong> da empresa?
+              O usuário perderá todo o acesso a esta empresa.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUsuarioParaExcluir(null)} disabled={excluindoUsuario}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleExcluirUsuario}
+              disabled={excluindoUsuario}
+            >
+              {excluindoUsuario && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Excluir
             </Button>
           </DialogFooter>
         </DialogContent>

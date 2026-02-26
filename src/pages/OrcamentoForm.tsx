@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { useClientes } from "@/hooks/useClientes";
 import { useProdutos } from "@/hooks/useProdutos";
 import { useOrcamentos, OrcamentoItem, StatusOrcamento } from "@/hooks/useOrcamentos";
+import { useOrdemServico } from "@/hooks/useOrdemServico";
 import { usePedidos } from "@/hooks/usePedidos";
 import { useContasReceber } from "@/hooks/useContasReceber";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -67,6 +68,7 @@ export default function OrcamentoForm() {
   const { clientes } = useClientes();
   const { data: produtos = [] } = useProdutos();
   const { createOrcamento, updateOrcamento, getOrcamentoComItens, updateOrcamentoStatus } = useOrcamentos();
+  const { createOS } = useOrdemServico();
   const { createPedido } = usePedidos();
   const { createConta } = useContasReceber();
 
@@ -77,7 +79,7 @@ export default function OrcamentoForm() {
   const [desconto, setDesconto] = useState(0);
   const [observacoes, setObservacoes] = useState("");
   const [validade, setValidade] = useState<Date | undefined>();
-  const [garantiaServico, setGarantiaServico] = useState("");
+  const [garantiaServico, setGarantiaServico] = useState("GARANTIA: OS MATERIAIS ELÉTRICOS (FONTES, LEDS, ETC.) SÃO GARANTIDOS PELO PERÍODO LEGAL DE 3 MESES.\nESTA GARANTIA NÃO COBRE DEFEITOS OU PROBLEMAS CAUSADOS POR SOBRETENSÕES, CHUVAS, RAIOS, VENTOS, ETC.)\nE SERÁ AUTOMATICAMENTE CANCELADA SE HOUVER INTERFERENCIA DE PESSOAS OU TÉCNICOS NÃO AUTORIZADOS.");
   const [requisitos, setRequisitos] = useState("");
   const [formasPagamento, setFormasPagamento] = useState("");
   const [chavePix, setChavePix] = useState("");
@@ -445,15 +447,24 @@ Aguardamos seu retorno!`;
 
     setIsLoading(true);
     try {
+      // 1. Atualizar status do orçamento para aprovado
       await updateOrcamentoStatus.mutateAsync({ id, status: "aprovado" });
 
-      await createPedido.mutateAsync({
-        orcamento_id: id,
+      // 2. Criar Ordem de Serviço automaticamente
+      await createOS.mutateAsync({
+        titulo: `OS - Orçamento #${orcamentoCarregado.numero}`,
         cliente_id: orcamentoCarregado.cliente_id || undefined,
+        responsavel: (orcamentoCarregado as any).vendedor_nome || vendedorNome || undefined,
+        status: "aberta",
+        prioridade: "normal",
         data_previsao: orcamentoCarregado.prazo_entrega || undefined,
-        observacoes: `Orçamento #${orcamentoCarregado.numero} aprovado`,
+        descricao: (orcamentoCarregado as any).descricao_servico || descricaoServico || undefined,
+        observacoes: orcamentoCarregado.observacoes || undefined,
+        orcamento_id: id,
+        orcamento_origem_id: id,
       });
 
+      // 3. Criar conta a receber
       await createConta.mutateAsync({
         cliente_id: orcamentoCarregado.cliente_id || undefined,
         descricao: `Orçamento #${orcamentoCarregado.numero}`,
@@ -462,8 +473,8 @@ Aguardamos seu retorno!`;
         forma_pagamento: "dinheiro",
       });
 
-      toast({ title: "Orçamento aprovado! Pedido de produção e conta a receber criados." });
-      navigate("/orcamentos");
+      toast({ title: "Orçamento aprovado! Ordem de Serviço criada com sucesso." });
+      navigate("/ordem-servico");
     } catch (error) {
       console.error(error);
     } finally {
@@ -673,10 +684,9 @@ Aguardamos seu retorno!`;
                 <Label>Garantia do Serviço</Label>
                 <Textarea
                   value={garantiaServico}
-                  onChange={(e) => setGarantiaServico(e.target.value)}
-                  placeholder="Descreva as garantias do serviço..."
-                  rows={3}
-                  disabled={isViewMode}
+                  readOnly
+                  rows={4}
+                  className="bg-muted/50 cursor-default"
                 />
               </div>
 
