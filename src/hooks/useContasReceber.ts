@@ -116,7 +116,7 @@ export function useContasReceber() {
       const { data, error } = await supabase
         .from("contas_receber")
         .update({
-          status: "recebido",
+          status: "pago",
           data_recebimento: new Date().toISOString().split("T")[0],
         })
         .eq("id", id)
