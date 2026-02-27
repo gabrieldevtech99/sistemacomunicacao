@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserPermissions, Permission } from "@/hooks/useUserPermissions";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const PERMISSION_ROUTES: Record<Permission, string> = {
     dashboard: "/",
@@ -44,8 +45,27 @@ export function ProtectedRoute({ children, permission, requireAdmin }: Protected
     if (permission && !hasPermission(permission)) {
         // Find the first permitted route to redirect to (avoid infinite loop)
         const firstPermitted = permissions.find(p => p !== permission);
-        const redirectTo = firstPermitted ? PERMISSION_ROUTES[firstPermitted] : "/auth";
-        return <Navigate to={redirectTo} replace />;
+
+        if (firstPermitted) {
+            const redirectTo = PERMISSION_ROUTES[firstPermitted];
+            return <Navigate to={redirectTo} replace />;
+        }
+
+        // If no permissions at all, show a restricted access message instead of redirecting to login
+        return (
+            <div className="flex flex-col h-screen w-screen items-center justify-center p-4 text-center">
+                <h1 className="text-2xl font-bold mb-2">Acesso Restrito</h1>
+                <p className="text-muted-foreground mb-4">Você ainda não tem permissão para acessar esta área.</p>
+                <p className="text-sm text-muted-foreground">Solicite ao administrador da sua empresa a liberação do seu acesso.</p>
+                <Button
+                    variant="outline"
+                    className="mt-6"
+                    onClick={() => window.location.href = '/auth'}
+                >
+                    Voltar para Login
+                </Button>
+            </div>
+        );
     }
 
     return <>{children}</>;
