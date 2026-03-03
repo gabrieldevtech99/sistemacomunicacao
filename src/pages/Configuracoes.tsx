@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Users, Bell, Shield, Trash2 } from "lucide-react";
+import { Building2, Users, Bell, Shield, Trash2, Pencil } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,11 @@ export default function Configuracoes() {
   const [criandoUsuario, setCriandoUsuario] = useState(false);
   const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<EmpresaUsuario | null>(null);
   const [excluindoUsuario, setExcluindoUsuario] = useState(false);
+
+  // Edit permissions state
+  const [usuarioParaEditar, setUsuarioParaEditar] = useState<EmpresaUsuario | null>(null);
+  const [editPermissions, setEditPermissions] = useState<Permission[]>([]);
+  const [salvandoPermissoes, setSalvandoPermissoes] = useState(false);
 
   useEffect(() => {
     if (empresaAtiva) {
@@ -239,6 +244,49 @@ export default function Configuracoes() {
     );
   };
 
+  const toggleEditPermission = (perm: Permission) => {
+    setEditPermissions((prev) =>
+      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
+    );
+  };
+
+  const handleAbrirEditar = (u: EmpresaUsuario) => {
+    setUsuarioParaEditar(u);
+    setEditPermissions(u.permissions as Permission[]);
+  };
+
+  const handleSalvarPermissoes = async () => {
+    if (!usuarioParaEditar || !empresaAtiva) return;
+    setSalvandoPermissoes(true);
+    try {
+      // Remove all existing permissions
+      await supabase
+        .from("user_permissions")
+        .delete()
+        .eq("empresa_id", empresaAtiva.id)
+        .eq("user_id", usuarioParaEditar.user_id);
+
+      // Insert new permissions
+      if (editPermissions.length > 0) {
+        const permRows = editPermissions.map((perm) => ({
+          empresa_id: empresaAtiva.id,
+          user_id: usuarioParaEditar.user_id,
+          permission: perm,
+        }));
+        const { error } = await supabase.from("user_permissions").insert(permRows);
+        if (error) throw error;
+      }
+
+      toast.success("Permissões atualizadas com sucesso!");
+      setUsuarioParaEditar(null);
+      await loadUsuarios();
+    } catch (error: any) {
+      toast.error("Erro ao atualizar permissões: " + error.message);
+    } finally {
+      setSalvandoPermissoes(false);
+    }
+  };
+
   const handleExcluirUsuario = async () => {
     if (!usuarioParaExcluir || !empresaAtiva) return;
     setExcluindoUsuario(true);
@@ -397,14 +445,25 @@ export default function Configuracoes() {
                           {u.role === "admin" ? "Administrador" : "Usuário"}
                         </span>
                         {isAdmin && u.user_id !== user?.id && u.role !== "admin" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setUsuarioParaExcluir(u)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                              title="Editar permissões"
+                              onClick={() => handleAbrirEditar(u)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setUsuarioParaExcluir(u)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -556,6 +615,45 @@ export default function Configuracoes() {
             <Button onClick={handleCriarUsuario} disabled={criandoUsuario}>
               {criandoUsuario && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Criar Usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Editar Permissões */}
+      <Dialog open={!!usuarioParaEditar} onOpenChange={(open) => !open && setUsuarioParaEditar(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Permissões</DialogTitle>
+            <DialogDescription>
+              Atualize os módulos que <strong>{usuarioParaEditar?.profile?.nome || "este usuário"}</strong> tem acesso.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-4">
+            <Label className="text-base font-semibold">Permissões de Acesso</Label>
+            {PERMISSION_OPTIONS.map((opt) => (
+              <div key={opt.value} className="flex items-start space-x-3">
+                <Checkbox
+                  id={`edit-${opt.value}`}
+                  checked={editPermissions.includes(opt.value)}
+                  onCheckedChange={() => toggleEditPermission(opt.value)}
+                />
+                <div className="grid gap-0.5 leading-none">
+                  <label htmlFor={`edit-${opt.value}`} className="text-sm font-medium cursor-pointer">
+                    {opt.label}
+                  </label>
+                  <p className="text-xs text-muted-foreground">{opt.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUsuarioParaEditar(null)} disabled={salvandoPermissoes}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSalvarPermissoes} disabled={salvandoPermissoes}>
+              {salvandoPermissoes && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar Permissões
             </Button>
           </DialogFooter>
         </DialogContent>

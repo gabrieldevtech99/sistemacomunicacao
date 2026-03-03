@@ -42,57 +42,92 @@ export function useDashboardData() {
       }
 
       const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      const year = now.getFullYear();
+      const month = now.getMonth(); // 0-based
 
-      // 1. Faturamento do Mês (Contas Receber Pagas no mês atual)
-      const { data: recebimentosMes } = await supabase
+      // Helper: check if a date string (YYYY-MM-DD or ISO) is in the given month
+      const isInMonth = (dateStr: string | null, y: number, m: number): boolean => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        return d.getFullYear() === y && d.getMonth() === m;
+      };
+
+      // ============================================================
+      // Fetch ALL contas_receber and contas_pagar for the company,
+      // then filter in JavaScript to avoid enum type issues on Supabase
+      // ============================================================
+
+      const { data: todasContasReceber, error: errReceber } = await supabase
         .from("contas_receber")
-        .select("valor")
-        .eq("empresa_id", empresaAtiva.id)
-        .eq("status", "recebido")
-        .gte("data_recebimento", firstDayOfMonth)
-        .lte("data_recebimento", lastDayOfMonth);
+        .select("id, valor, status, data_recebimento, updated_at, descricao, created_at, empresa_id")
+        .eq("empresa_id", empresaAtiva.id);
 
-      const faturamentoMes = recebimentosMes?.reduce((sum, item) => sum + Number(item.valor), 0) || 0;
+      if (errReceber) {
+        console.error("Erro ao buscar contas_receber:", errReceber);
+      }
 
-      // 2. Despesas do Mês (Contas Pagar Pagas no mês atual)
-      const { data: pagamentosMes } = await supabase
+      const { data: todasContasPagar, error: errPagar } = await supabase
         .from("contas_pagar")
-        .select("valor")
-        .eq("empresa_id", empresaAtiva.id)
-        .eq("status", "pago")
-        .gte("data_pagamento", firstDayOfMonth)
-        .lte("data_pagamento", lastDayOfMonth);
+        .select("id, valor, status, data_pagamento, updated_at, descricao, created_at")
+        .eq("empresa_id", empresaAtiva.id);
 
-      const despesasMes = pagamentosMes?.reduce((sum, item) => sum + Number(item.valor), 0) || 0;
+      if (errPagar) {
+        console.error("Erro ao buscar contas_pagar:", errPagar);
+      }
 
-      // 3. Pendentes de Receber
-      const { data: pendentesReceber } = await supabase
-        .from("contas_receber")
-        .select("valor")
-        .eq("empresa_id", empresaAtiva.id)
-        .eq("status", "pendente");
+      const contasReceber = todasContasReceber || [];
+      const contasPagar = todasContasPagar || [];
 
-      const totalReceberPendente = pendentesReceber?.reduce((sum, item) => sum + Number(item.valor), 0) || 0;
+      console.log("Dashboard - contas_receber total:", contasReceber.length);
+      console.log("Dashboard - contas_pagar total:", contasPagar.length);
+      console.log("Dashboard - statuses receber:", [...new Set(contasReceber.map((c: any) => c.status))]);
+      console.log("Dashboard - statuses pagar:", [...new Set(contasPagar.map((c: any) => c.status))]);
 
-      // 4. Pendentes de Pagar
-      const { data: pendentesPagar } = await supabase
-        .from("contas_pagar")
-        .select("valor")
-        .eq("empresa_id", empresaAtiva.id)
-        .eq("status", "pendente");
+      // Statuses considered as "paid/received"
+      const PAID_STATUSES = ["pago", "recebido"];
+      // Statuses considered as "pending"
+      const PENDING_STATUSES = ["pendente", "vencido"];
 
-      const totalPagarPendente = pendentesPagar?.reduce((sum, item) => sum + Number(item.valor), 0) || 0;
+      // 1. Faturamento do Mês — contas_receber pagas NESTE mês
+      const recebidosEsteMes = contasReceber.filter((c: any) => {
+        if (!PAID_STATUSES.includes(c.status)) return false;
+        // Check by data_recebimento, otherwise fall back to updated_at
+        const dateToCheck = c.data_recebimento || c.updated_at;
+        return isInMonth(dateToCheck, year, month);
+      });
+
+      const faturamentoMes = recebidosEsteMes.reduce((sum: number, c: any) => sum + Number(c.valor), 0);
+      console.log("Dashboard - faturamento:", faturamentoMes, "from", recebidosEsteMes.length, "entries");
+
+      // 2. Despesas do Mês — contas_pagar pagas NESTE mês
+      const pagosEsteMes = contasPagar.filter((c: any) => {
+        if (c.status !== "pago") return false;
+        const dateToCheck = c.data_pagamento || c.updated_at;
+        return isInMonth(dateToCheck, year, month);
+      });
+
+      const despesasMes = pagosEsteMes.reduce((sum: number, c: any) => sum + Number(c.valor), 0);
+      console.log("Dashboard - despesas:", despesasMes, "from", pagosEsteMes.length, "entries");
+
+      // 3. Total a receber (tudo que não está pago/cancelado)
+      const PAID_OR_CANCELLED = ["pago", "recebido", "cancelado"];
+      const pendentesReceber = contasReceber.filter((c: any) => !PAID_OR_CANCELLED.includes(c.status));
+      const totalReceberPendente = pendentesReceber.reduce((sum: number, c: any) => sum + Number(c.valor), 0);
+      console.log("Dashboard - a receber pendente:", totalReceberPendente, "count:", pendentesReceber.length);
+      console.log("Dashboard - statuses receber:", contasReceber.map((c: any) => c.status));
+
+      // 4. Total a pagar (tudo que não está pago/cancelado)
+      const pendentesPagar = contasPagar.filter((c: any) => !PAID_OR_CANCELLED.includes(c.status));
+      const totalPagarPendente = pendentesPagar.reduce((sum: number, c: any) => sum + Number(c.valor), 0);
 
       // 5. Ordens de Serviço por Status
-      const { data: osStatus } = await supabase
-        .from("ordens_servico")
+      const { data: osStatus } = await (supabase
+        .from("ordens_servico" as any) as any)
         .select("status")
         .eq("empresa_id", empresaAtiva.id);
 
       const statusMap: Record<string, number> = {};
-      osStatus?.forEach((os) => {
+      (osStatus || []).forEach((os: any) => {
         statusMap[os.status] = (statusMap[os.status] || 0) + 1;
       });
 
@@ -101,34 +136,20 @@ export function useDashboardData() {
         total,
       }));
 
-      // 6. Transações Recentes (Union of Pagar and Receber)
-      const { data: ultimosRecebimentos } = await supabase
-        .from("contas_receber")
-        .select("id, descricao, valor, created_at, categoria:categorias(nome)")
-        .eq("empresa_id", empresaAtiva.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      const { data: ultimosPagamentos } = await supabase
-        .from("contas_pagar")
-        .select("id, descricao, valor, created_at, categoria:categorias(nome)")
-        .eq("empresa_id", empresaAtiva.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-
+      // 6. Transações Recentes
       const transacoesRecentes = [
-        ...(ultimosRecebimentos || []).map((r) => ({
+        ...contasReceber.slice(0, 5).map((r: any) => ({
           id: r.id,
           descricao: r.descricao,
-          categoria: r.categoria?.nome || "Receita",
+          categoria: "Receita",
           tipo: "entrada" as const,
           valor: Number(r.valor),
           data: r.created_at,
         })),
-        ...(ultimosPagamentos || []).map((p) => ({
+        ...contasPagar.slice(0, 5).map((p: any) => ({
           id: p.id,
           descricao: p.descricao,
-          categoria: p.categoria?.nome || "Despesa",
+          categoria: "Despesa",
           tipo: "saida" as const,
           valor: Number(p.valor),
           data: p.created_at,
@@ -140,31 +161,31 @@ export function useDashboardData() {
       // 7. Gráfico Mensal (últimos 6 meses)
       const graficoMensal = [];
       for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const mesNome = d.toLocaleDateString("pt-BR", { month: "short" });
-        const mesStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
-        const mesEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString();
+        const targetYear = month - i < 0 ? year - 1 : year;
+        const targetMonth = ((month - i) % 12 + 12) % 12;
 
-        const { data: ent } = await supabase
-          .from("contas_receber")
-          .select("valor")
-          .eq("empresa_id", empresaAtiva.id)
-          .eq("status", "recebido")
-          .gte("data_recebimento", mesStart)
-          .lte("data_recebimento", mesEnd);
+        const mesNome = new Date(targetYear, targetMonth, 1).toLocaleDateString("pt-BR", { month: "short" });
 
-        const { data: sai } = await supabase
-          .from("contas_pagar")
-          .select("valor")
-          .eq("empresa_id", empresaAtiva.id)
-          .eq("status", "pago")
-          .gte("data_pagamento", mesStart)
-          .lte("data_pagamento", mesEnd);
+        const entradas = contasReceber
+          .filter((c: any) => {
+            if (!PAID_STATUSES.includes(c.status)) return false;
+            const dateToCheck = c.data_recebimento || c.updated_at;
+            return isInMonth(dateToCheck, targetYear, targetMonth);
+          })
+          .reduce((sum: number, c: any) => sum + Number(c.valor), 0);
+
+        const saidas = contasPagar
+          .filter((c: any) => {
+            if (c.status !== "pago") return false;
+            const dateToCheck = c.data_pagamento || c.updated_at;
+            return isInMonth(dateToCheck, targetYear, targetMonth);
+          })
+          .reduce((sum: number, c: any) => sum + Number(c.valor), 0);
 
         graficoMensal.push({
           mes: mesNome.charAt(0).toUpperCase() + mesNome.slice(1).replace(".", ""),
-          entradas: ent?.reduce((sum, item) => sum + Number(item.valor), 0) || 0,
-          saidas: sai?.reduce((sum, item) => sum + Number(item.valor), 0) || 0,
+          entradas,
+          saidas,
         });
       }
 
@@ -183,7 +204,7 @@ export function useDashboardData() {
           quantidade_minima: p.quantidade_minima,
         }));
 
-      // 9. Status Adicionais
+      // 9. Orçamentos
       const { count: orcamentosAbertos } = await supabase
         .from("orcamentos")
         .select("*", { count: "exact", head: true })

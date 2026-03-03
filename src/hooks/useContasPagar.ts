@@ -136,6 +136,7 @@ export function useContasPagar(isDespesaFixa?: boolean) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contas_pagar"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
       toast({ title: "Conta a pagar cadastrada!" });
     },
     onError: (error) => {
@@ -159,6 +160,7 @@ export function useContasPagar(isDespesaFixa?: boolean) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contas_pagar"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
       toast({ title: "Conta marcada como paga!" });
     },
     onError: (error) => {
@@ -173,6 +175,7 @@ export function useContasPagar(isDespesaFixa?: boolean) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contas_pagar"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
       toast({ title: "Conta excluída!" });
     },
     onError: (error) => {

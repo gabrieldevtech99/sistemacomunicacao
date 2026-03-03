@@ -52,7 +52,7 @@ export default function ContasReceber() {
   const { clientes } = useClientes();
   const { data: categorias = [] } = useCategorias();
   const categoriasEntrada = categorias.filter((c) => c.tipo === "entrada");
-  
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -105,8 +105,8 @@ export default function ContasReceber() {
   };
 
   const totalPendente = filteredContas
-    .filter((c) => c.status === "pendente")
-    .reduce((sum, c) => sum + c.valor, 0);
+    .filter((c) => c.status === "pendente" || c.status === "vencido")
+    .reduce((sum, c) => sum + Number(c.valor), 0);
 
   return (
     <MainLayout>

@@ -104,6 +104,7 @@ export function useContasReceber() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contas_receber"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
       toast({ title: "Conta a receber cadastrada!" });
     },
     onError: (error) => {
@@ -127,6 +128,7 @@ export function useContasReceber() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contas_receber"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
       toast({ title: "Conta marcada como recebida!" });
     },
     onError: (error) => {
@@ -141,6 +143,7 @@ export function useContasReceber() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contas_receber"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
       toast({ title: "Conta excluída!" });
     },
     onError: (error) => {

@@ -3,14 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type Permission = "dashboard" | "cadastros" | "comercial" | "financeiro" | "producao" | "configuracoes";
+export type Permission = "dashboard" | "cadastros" | "comercial" | "orcamentos" | "financeiro" | "producao" | "configuracoes";
 
-export const ALL_PERMISSIONS: Permission[] = ["dashboard", "cadastros", "comercial", "financeiro", "producao", "configuracoes"];
+export const ALL_PERMISSIONS: Permission[] = ["dashboard", "cadastros", "comercial", "orcamentos", "financeiro", "producao", "configuracoes"];
 
 export const PERMISSION_OPTIONS: { value: Permission; label: string; description: string }[] = [
   { value: "dashboard", label: "Dashboard", description: "Painel principal com resumo e indicadores" },
   { value: "cadastros", label: "Cadastros", description: "Clientes, Fornecedores, Produtos, Categorias" },
-  { value: "comercial", label: "Comercial", description: "Orçamentos, Produção" },
+  { value: "comercial", label: "Comercial", description: "Ordem de Serviço, Painel de OS, Compras" },
+  { value: "orcamentos", label: "Orçamentos", description: "Criar e gerenciar orçamentos" },
   { value: "financeiro", label: "Financeiro", description: "Contas a Pagar/Receber, Despesas Fixas, Budget" },
   { value: "producao", label: "Produção", description: "Gestão de produção" },
   { value: "configuracoes", label: "Configurações", description: "Configurações do sistema" },

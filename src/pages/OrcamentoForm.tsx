@@ -49,6 +49,7 @@ import { cn } from "@/lib/utils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ItemForm {
   produto_id: string | null;
@@ -77,13 +78,13 @@ export default function OrcamentoForm() {
   const [prazoEntrega, setPrazoEntrega] = useState<Date | undefined>();
   const [diasUteis, setDiasUteis] = useState<number | undefined>();
   const [desconto, setDesconto] = useState(0);
-  const [observacoes, setObservacoes] = useState("");
+  const [observacoes, setObservacoes] = useState("REQUISITOS: O CLIENTE DEVERÁ DISPONIBILIZAR UM PONTO DE ENERGIA NO LOCAL DA INSTALAÇÃO. OBS: ESTE ORÇAMENTOS ESTÁ SUJEITO A MUDANÇAS E MEDIDAS E VALORES.");
   const [validade, setValidade] = useState<Date | undefined>();
   const [garantiaServico, setGarantiaServico] = useState("GARANTIA: OS MATERIAIS ELÉTRICOS (FONTES, LEDS, ETC.) SÃO GARANTIDOS PELO PERÍODO LEGAL DE 3 MESES.\nESTA GARANTIA NÃO COBRE DEFEITOS OU PROBLEMAS CAUSADOS POR SOBRETENSÕES, CHUVAS, RAIOS, VENTOS, ETC.)\nE SERÁ AUTOMATICAMENTE CANCELADA SE HOUVER INTERFERENCIA DE PESSOAS OU TÉCNICOS NÃO AUTORIZADOS.");
   const [requisitos, setRequisitos] = useState("");
-  const [formasPagamento, setFormasPagamento] = useState("");
-  const [chavePix, setChavePix] = useState("");
-  const [banco, setBanco] = useState("");
+  const [formasPagamento, setFormasPagamento] = useState("50% NA ENTRADA E O RESTANTE NA ENTREGA DO SERVIÇO");
+  const [chavePix, setChavePix] = useState("45115659000121");
+  const [banco, setBanco] = useState("BANCO STONE");
   const [vendedorNome, setVendedorNome] = useState("");
   const [numeroManual, setNumeroManual] = useState("");
   const [enderecoEntrega, setEnderecoEntrega] = useState("");
@@ -243,8 +244,8 @@ export default function OrcamentoForm() {
     }
   };
 
-  const gerarPDF = () => {
-    if (!orcamentoCarregado) return;
+  const gerarPDFBlob = () => {
+    if (!orcamentoCarregado) return null;
 
     const doc = new jsPDF();
     const cliente = clientes.find((c) => c.id === orcamentoCarregado.cliente_id);
@@ -386,7 +387,7 @@ export default function OrcamentoForm() {
 
     // Formas de Pagamento
     const fp = (orcamentoCarregado as any).formas_pagamento || formasPagamento;
-    if (fp || (orcamentoCarregado as any).chave_pix || chavePix) {
+    if (fp || (orcamentoCarregado as any).chave_pix || chavePix || (orcamentoCarregado as any).banco || banco) {
       if (finalY > 250) { doc.addPage(); finalY = 20; }
       doc.setFont("helvetica", "bold");
       doc.text("FORMAS DE PAGAMENTO", 14, finalY);
@@ -410,11 +411,18 @@ export default function OrcamentoForm() {
       doc.text(orcamentoCarregado.observacoes, 14, finalY, { maxWidth: 180 });
     }
 
-    doc.save(`orcamento-${orcamentoCarregado.numero}.pdf`);
-    toast({ title: "PDF gerado com sucesso!" });
+    return doc;
   };
 
-  const enviarWhatsApp = () => {
+  const gerarPDF = () => {
+    const doc = gerarPDFBlob();
+    if (doc) {
+      doc.save(`orcamento-${orcamentoCarregado.numero}.pdf`);
+      toast({ title: "PDF gerado com sucesso!" });
+    }
+  };
+
+  const enviarWhatsApp = async () => {
     if (!orcamentoCarregado) return;
     const cliente = clientes.find((c) => c.id === orcamentoCarregado.cliente_id);
 
@@ -423,23 +431,65 @@ export default function OrcamentoForm() {
       return;
     }
 
-    const telefone = cliente.telefone.replace(/\D/g, "");
-    const prazoTexto = orcamentoCarregado.prazo_entrega
-      ? format(new Date(orcamentoCarregado.prazo_entrega), "dd/MM/yyyy")
-      : orcamentoCarregado.dias_uteis
-        ? `${orcamentoCarregado.dias_uteis} dias úteis`
-        : "A combinar";
+    setIsLoading(true);
+    try {
+      const doc = gerarPDFBlob();
+      if (!doc) throw new Error("Erro ao gerar PDF");
 
-    const mensagem = `Olá! Segue o orçamento #${orcamentoCarregado.numero} da ${empresaAtiva?.nome || "nossa empresa"}:
+      const pdfOutput = doc.output('blob');
+      const filename = `orcamentos/orcamento-${orcamentoCarregado.numero}-${Date.now()}.pdf`;
 
-📋 *Cliente:* ${cliente.nome}
-💰 *Total:* ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(orcamentoCarregado.valor_final)}
-📅 *Prazo:* ${prazoTexto}
+      // Upload para o bucket 'orcamentos'
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('orcamentos')
+        .upload(filename, pdfOutput, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) {
+        // Se o erro for que o bucket não existe, avisamos o usuário
+        if (uploadError.message.includes("bucket not found")) {
+          throw new Error("O bucket 'orcamentos' não foi encontrado no Supabase. Por favor, crie-o no painel do Supabase.");
+        }
+        throw uploadError;
+      }
+
+      // Pegar URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('orcamentos')
+        .getPublicUrl(filename);
+
+      const telefone = cliente.telefone.replace(/\D/g, "");
+      const prazoTexto = orcamentoCarregado.prazo_entrega
+        ? format(new Date(orcamentoCarregado.prazo_entrega), "dd/MM/yyyy")
+        : orcamentoCarregado.dias_uteis
+          ? `${orcamentoCarregado.dias_uteis} dias úteis`
+          : "A combinar";
+
+      const pix = (orcamentoCarregado as any).chave_pix || chavePix;
+      const mensagem = `Olá, ${cliente.nome}! Tudo bem?
+
+Conforme conversamos, segue o orçamento detalhado para o seu projeto.
+
+*Formas de pagamento:* PIX: ${pix || "Não informada"}
+
+*Segue o PDF do Orçamento:* ${publicUrl}
 
 Aguardamos seu retorno!`;
 
-    const url = `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagem)}`;
-    window.open(url, "_blank");
+      const url = `https://wa.me/55${telefone}?text=${encodeURIComponent(mensagem)}`;
+      window.open(url, "_blank");
+    } catch (error: any) {
+      console.error("Erro ao compartilhar:", error);
+      toast({
+        title: "Erro ao enviar WhatsApp",
+        description: error.message || "Verifique se o bucket 'orcamentos' existe e é público.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const aprovarOrcamento = async () => {
