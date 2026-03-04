@@ -35,6 +35,7 @@ export default function Compras() {
 
     const [selectedOS, setSelectedOS] = useState("");
     const [newItemTexts, setNewItemTexts] = useState<Record<string, string>>({});
+    const [newItemValues, setNewItemValues] = useState<Record<string, string>>({});
     const [expandedCompra, setExpandedCompra] = useState<string | null>(null);
 
     const handleCreateCompra = async () => {
@@ -45,9 +46,16 @@ export default function Compras() {
 
     const handleAddItem = async (compraId: string) => {
         const text = newItemTexts[compraId];
+        const valor = parseFloat(newItemValues[compraId] || "0") || 0;
         if (!text?.trim()) return;
-        await addCompraItem.mutateAsync({ compra_id: compraId, descricao: text.trim() });
-        setNewItemTexts(prev => ({ ...prev, [compraId]: "" }));
+
+        try {
+            await addCompraItem.mutateAsync({ compra_id: compraId, descricao: text.trim(), valor });
+            setNewItemTexts(prev => ({ ...prev, [compraId]: "" }));
+            setNewItemValues(prev => ({ ...prev, [compraId]: "" }));
+        } catch (error) {
+            console.error("Erro no handleAddItem:", error);
+        }
     };
 
     const getStatusVariant = (status: StatusCompraItem) => {
@@ -129,6 +137,12 @@ export default function Compras() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <div className="text-right mr-2">
+                                            <p className="text-[10px] uppercase text-muted-foreground font-bold leading-none mb-1">Gasto Total</p>
+                                            <p className="font-bold text-sm text-primary">
+                                                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(compra.itens?.reduce((sum, i) => sum + (i.valor || 0), 0) || 0)}
+                                            </p>
+                                        </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => {
                                             e.stopPropagation();
                                             if (confirm("Excluir esta lista de compras?")) deleteCompra.mutate(compra.id);
@@ -143,15 +157,23 @@ export default function Compras() {
                                     <CardContent className="p-4 pt-2 border-t border-dashed">
                                         <div className="space-y-3">
                                             {/* Cabeçalho da Lista */}
-                                            <div className="flex gap-2 mb-4 mt-2">
+                                            <div className="flex flex-col md:flex-row gap-2 mb-4 mt-2">
                                                 <Input
-                                                    placeholder="O que precisa comprar? (Ex: ACM 3mm, Ferro Chato...)"
+                                                    placeholder="O que precisa comprar? (Ex: ACM 3mm...)"
                                                     className="flex-1 text-sm h-9"
                                                     value={newItemTexts[compra.id] || ""}
                                                     onChange={(e) => setNewItemTexts(prev => ({ ...prev, [compra.id]: e.target.value }))}
                                                     onKeyDown={(e) => e.key === "Enter" && handleAddItem(compra.id)}
                                                 />
-                                                <Button size="sm" onClick={() => handleAddItem(compra.id)} disabled={!newItemTexts[compra.id]?.trim()}>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="Valor"
+                                                    className="w-full md:w-24 text-sm h-9"
+                                                    value={newItemValues[compra.id] || ""}
+                                                    onChange={(e) => setNewItemValues(prev => ({ ...prev, [compra.id]: e.target.value }))}
+                                                    onKeyDown={(e) => e.key === "Enter" && handleAddItem(compra.id)}
+                                                />
+                                                <Button size="sm" onClick={() => handleAddItem(compra.id)} disabled={!newItemTexts[compra.id]?.trim()} className="h-9">
                                                     Adicionar
                                                 </Button>
                                             </div>
@@ -172,24 +194,29 @@ export default function Compras() {
                                                                     {item.descricao}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <Select
-                                                                    value={item.status}
-                                                                    onValueChange={(val: StatusCompraItem) => updateItemStatus.mutate({ id: item.id, status: val })}
-                                                                >
-                                                                    <SelectTrigger className="h-8 text-[11px] w-[100px] border-none bg-muted/40 font-medium">
-                                                                        <SelectValue />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="pendente">Pendente</SelectItem>
-                                                                        <SelectItem value="comprado">Comprado</SelectItem>
-                                                                        <SelectItem value="entregue">Entregue</SelectItem>
-                                                                        <SelectItem value="incompleto">Incompleto</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteItem.mutate(item.id)}>
-                                                                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                                                                </Button>
+                                                            <div className="flex items-center gap-4">
+                                                                <span className="text-sm font-medium text-muted-foreground mr-2">
+                                                                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(item.valor || 0)}
+                                                                </span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Select
+                                                                        value={item.status}
+                                                                        onValueChange={(val: StatusCompraItem) => updateItemStatus.mutate({ id: item.id, status: val })}
+                                                                    >
+                                                                        <SelectTrigger className="h-8 text-[11px] w-[100px] border-none bg-muted/40 font-medium">
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="pendente">Pendente</SelectItem>
+                                                                            <SelectItem value="comprado">Comprado</SelectItem>
+                                                                            <SelectItem value="entregue">Entregue</SelectItem>
+                                                                            <SelectItem value="incompleto">Incompleto</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteItem.mutate(item.id)}>
+                                                                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                                                    </Button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}

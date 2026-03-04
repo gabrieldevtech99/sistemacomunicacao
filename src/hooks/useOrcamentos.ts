@@ -22,6 +22,7 @@ export interface Orcamento {
   empresa_id: string;
   cliente_id: string | null;
   numero: number;
+  numero_manual?: string | null;
   status: StatusOrcamento;
   prazo_entrega: string | null;
   dias_uteis: number | null;

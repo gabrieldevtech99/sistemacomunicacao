@@ -199,6 +199,10 @@ export default function OrcamentoForm() {
   };
 
   const handleSalvar = async () => {
+    if (!numeroManual) {
+      toast({ title: "Informe o número do orçamento", variant: "destructive" });
+      return;
+    }
     if (itens.length === 0) {
       toast({ title: "Adicione pelo menos um item", variant: "destructive" });
       return;
@@ -417,7 +421,8 @@ export default function OrcamentoForm() {
   const gerarPDF = () => {
     const doc = gerarPDFBlob();
     if (doc) {
-      doc.save(`orcamento-${orcamentoCarregado.numero}.pdf`);
+      const numOS = orcamentoCarregado.numero_manual || orcamentoCarregado.numero;
+      doc.save(`orcamento-${numOS}.pdf`);
       toast({ title: "PDF gerado com sucesso!" });
     }
   };
@@ -433,11 +438,9 @@ export default function OrcamentoForm() {
 
     setIsLoading(true);
     try {
-      const doc = gerarPDFBlob();
-      if (!doc) throw new Error("Erro ao gerar PDF");
-
+      const numOS = orcamentoCarregado.numero_manual || orcamentoCarregado.numero;
       const pdfOutput = doc.output('blob');
-      const filename = `orcamentos/orcamento-${orcamentoCarregado.numero}-${Date.now()}.pdf`;
+      const filename = `orcamentos/orcamento-${numOS}-${Date.now()}.pdf`;
 
       // Upload para o bucket 'orcamentos'
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -501,8 +504,9 @@ Aguardamos seu retorno!`;
       await updateOrcamentoStatus.mutateAsync({ id, status: "aprovado" });
 
       // 2. Criar Ordem de Serviço automaticamente
+      const numOS = orcamentoCarregado.numero_manual || orcamentoCarregado.numero;
       await createOS.mutateAsync({
-        titulo: `OS - Orçamento #${orcamentoCarregado.numero}`,
+        titulo: `OS - Orçamento #${numOS}`,
         cliente_id: orcamentoCarregado.cliente_id || undefined,
         responsavel: (orcamentoCarregado as any).vendedor_nome || vendedorNome || undefined,
         status: "aberta",
@@ -517,7 +521,7 @@ Aguardamos seu retorno!`;
       // 3. Criar conta a receber
       await createConta.mutateAsync({
         cliente_id: orcamentoCarregado.cliente_id || undefined,
-        descricao: `Orçamento #${orcamentoCarregado.numero}`,
+        descricao: `Orçamento #${numOS}`,
         valor: orcamentoCarregado.valor_final,
         data_vencimento: orcamentoCarregado.prazo_entrega || new Date().toISOString().split("T")[0],
         forma_pagamento: "dinheiro",
@@ -555,7 +559,7 @@ Aguardamos seu retorno!`;
         </Button>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            {id && orcamentoCarregado ? `Orçamento #${orcamentoCarregado.numero}` : "Novo Orçamento"}
+            {id && orcamentoCarregado ? `Orçamento #${orcamentoCarregado.numero_manual || orcamentoCarregado.numero}` : "Novo Orçamento"}
           </h1>
           <p className="text-muted-foreground mt-1">
             {isViewMode ? "Detalhes do orçamento" : isEditing ? "Editando orçamento" : "Preencha os dados do orçamento"}
@@ -652,7 +656,7 @@ Aguardamos seu retorno!`;
 
                 {!isViewMode && (
                   <div>
-                    <Label>Número Manual (Opcional)</Label>
+                    <Label>Número do Orçamento *</Label>
                     <Input
                       value={numeroManual}
                       onChange={(e) => setNumeroManual(e.target.value)}

@@ -52,7 +52,8 @@ export default function Orcamentos() {
   const filteredOrcamentos = orcamentos.filter((orc) => {
     const matchesSearch =
       orc.cliente?.nome?.toLowerCase().includes(search.toLowerCase()) ||
-      String(orc.numero).includes(search);
+      String(orc.numero).includes(search) ||
+      (orc.numero_manual && orc.numero_manual.toLowerCase().includes(search.toLowerCase()));
     const matchesStatus = statusFilter === "all" || orc.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -138,7 +139,7 @@ export default function Orcamentos() {
                     const config = STATUS_CONFIG[orc.status];
                     return (
                       <TableRow key={orc.id}>
-                        <TableCell className="font-medium">#{orc.numero}</TableCell>
+                        <TableCell className="font-medium">#{orc.numero_manual || orc.numero}</TableCell>
                         <TableCell>{orc.cliente?.nome || "Sem cliente"}</TableCell>
                         <TableCell>{orc.vendedor_nome || "-"}</TableCell>
                         <TableCell>

@@ -9,6 +9,7 @@ export interface CompraItem {
     id: string;
     compra_id: string;
     descricao: string;
+    valor: number;
     status: StatusCompraItem;
     created_at: string;
 }
@@ -98,7 +99,7 @@ export function useCompras() {
     });
 
     const addCompraItem = useMutation({
-        mutationFn: async ({ compra_id, descricao }: { compra_id: string; descricao: string }) => {
+        mutationFn: async ({ compra_id, descricao, valor }: { compra_id: string; descricao: string; valor: number }) => {
             if (!empresaAtiva?.id) throw new Error("Empresa não selecionada");
             const { data, error } = await supabase
                 .from("os_compra_itens")
@@ -106,6 +107,7 @@ export function useCompras() {
                     empresa_id: empresaAtiva.id,
                     compra_id,
                     descricao,
+                    valor,
                     status: "pendente"
                 })
                 .select()
@@ -114,6 +116,14 @@ export function useCompras() {
             return data;
         },
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["os_compras"] }),
+        onError: (error: any) => {
+            console.error("Erro ao adicionar item:", error);
+            toast({
+                title: "Erro ao adicionar item",
+                description: error.message || "Tente novamente mais tarde.",
+                variant: "destructive"
+            });
+        }
     });
 
     const updateItemStatus = useMutation({
