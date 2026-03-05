@@ -34,7 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { useContasPagar, ContaPagarInput, Recorrencia, StatusConta } from "@/hooks/useContasPagar";
 import { useCategorias } from "@/hooks/useCategorias";
 import { FORMAS_PAGAMENTO, FormaPagamento } from "@/types/database";
-import { Plus, Loader2, CheckCircle, Trash2, CalendarIcon, Repeat } from "lucide-react";
+import { Plus, Loader2, CheckCircle, Trash2, CalendarIcon, Repeat, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -47,11 +47,12 @@ const RECORRENCIA_OPTIONS: { value: Recorrencia; label: string }[] = [
 ];
 
 export default function DespesasFixas() {
-  const { contas, isLoading, createConta, marcarComoPago, deleteConta } = useContasPagar(true);
+  const { contas, isLoading, createConta, updateConta, marcarComoPago, deleteConta } = useContasPagar(true);
   const { data: categorias = [] } = useCategorias();
   const categoriasSaida = categorias.filter((c) => c.tipo === "saida");
-  
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ContaPagarInput & { is_despesa_fixa: boolean }>({
     descricao: "",
     valor: 0,
@@ -72,17 +73,41 @@ export default function DespesasFixas() {
       recorrencia: "mensal",
     });
     setDataVencimento(new Date());
+    setEditingId(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createConta.mutateAsync({
+    const data = {
       ...form,
       data_vencimento: dataVencimento.toISOString().split("T")[0],
       is_despesa_fixa: true,
-    });
+    };
+
+    if (editingId) {
+      await updateConta.mutateAsync({ id: editingId, ...data });
+    } else {
+      await createConta.mutateAsync(data);
+    }
+
     setIsDialogOpen(false);
     resetForm();
+  };
+
+  const handleEdit = (conta: any) => {
+    setEditingId(conta.id);
+    setForm({
+      descricao: conta.descricao,
+      valor: conta.valor,
+      data_vencimento: conta.data_vencimento,
+      forma_pagamento: conta.forma_pagamento,
+      is_despesa_fixa: true,
+      recorrencia: conta.recorrencia || "mensal",
+      categoria_id: conta.categoria_id,
+      observacoes: conta.observacoes,
+    });
+    setDataVencimento(new Date(conta.data_vencimento));
+    setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -114,7 +139,7 @@ export default function DespesasFixas() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nova Despesa Fixa</DialogTitle>
+              <DialogTitle>{editingId ? "Editar Despesa Fixa" : "Nova Despesa Fixa"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -234,9 +259,9 @@ export default function DespesasFixas() {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createConta.isPending}>
-                  {createConta.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Cadastrar
+                <Button type="submit" disabled={createConta.isPending || updateConta.isPending}>
+                  {(createConta.isPending || updateConta.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {editingId ? "Salvar Alterações" : "Cadastrar"}
                 </Button>
               </div>
             </form>
@@ -316,6 +341,14 @@ export default function DespesasFixas() {
                               <CheckCircle className="h-4 w-4 text-green-600" />
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Editar"
+                            onClick={() => handleEdit(conta)}
+                          >
+                            <Pencil className="h-4 w-4 text-blue-600" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

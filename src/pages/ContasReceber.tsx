@@ -325,7 +325,7 @@ export default function ContasReceber() {
                             {conta.descricao}
                           </div>
                         </TableCell>
-                        <TableCell>{conta.cliente?.nome || "-"}</TableCell>
+                        <TableCell>{clientes.find(c => c.id === conta.cliente_id)?.nome || "-"}</TableCell>
                         <TableCell>
                           {format(new Date(conta.data_vencimento), "dd/MM/yyyy", { locale: ptBR })}
                         </TableCell>

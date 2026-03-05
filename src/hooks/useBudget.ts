@@ -21,6 +21,7 @@ export interface BudgetInput {
   mes: number;
   ano: number;
   valor_previsto: number;
+  valor_realizado?: number;
 }
 
 export function useBudget(mes?: number, ano?: number) {
@@ -68,7 +69,10 @@ export function useBudget(mes?: number, ano?: number) {
       if (existing) {
         const { data, error } = await supabase
           .from("orcamento_financeiro")
-          .update({ valor_previsto: input.valor_previsto })
+          .update({
+            valor_previsto: input.valor_previsto,
+            valor_realizado: input.valor_realizado !== undefined ? input.valor_realizado : 0
+          })
           .eq("id", existing.id)
           .select()
           .single();
@@ -83,6 +87,7 @@ export function useBudget(mes?: number, ano?: number) {
             mes: input.mes,
             ano: input.ano,
             valor_previsto: input.valor_previsto,
+            valor_realizado: input.valor_realizado || 0,
           })
           .select()
           .single();

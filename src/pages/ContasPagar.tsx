@@ -52,7 +52,7 @@ export default function ContasPagar() {
   const { fornecedores } = useFornecedores();
   const { data: categorias = [] } = useCategorias();
   const categoriasSaida = categorias.filter((c) => c.tipo === "saida");
-  
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -325,7 +325,9 @@ export default function ContasPagar() {
                             {conta.descricao}
                           </div>
                         </TableCell>
-                        <TableCell>{conta.fornecedor?.razao_social || "-"}</TableCell>
+                        <TableCell>
+                          {fornecedores.find(f => f.id === conta.fornecedor_id)?.razao_social || "-"}
+                        </TableCell>
                         <TableCell>
                           {format(new Date(conta.data_vencimento), "dd/MM/yyyy", { locale: ptBR })}
                         </TableCell>

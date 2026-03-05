@@ -477,7 +477,7 @@ export default function OrcamentoForm() {
       const pix = (orcamentoCarregado as any).chave_pix || chavePix;
       const mensagem = `Olá, ${cliente.nome}! Tudo bem?
 
-Conforme conversamos, segue o orçamento detalhado para o seu projeto.
+Conforme acordado, segue o orçamento detalhado para o seu serviço.
 
 *Formas de pagamento:* PIX: ${pix || "Não informada"}
 

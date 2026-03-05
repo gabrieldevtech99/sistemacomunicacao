@@ -49,27 +49,33 @@ export default function Budget() {
   const categoriasSaida = categorias.filter((c) => c.tipo === "saida");
   const { toast } = useToast();
 
-  const [editingBudgets, setEditingBudgets] = useState<Record<string, number>>({});
+  const [editingBudgets, setEditingBudgets] = useState<Record<string, { previsto?: number; realizado?: number }>>({});
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
-  const handleValueChange = (categoriaId: string, value: number) => {
+  const handleValueChange = (categoriaId: string, field: "previsto" | "realizado", value: number) => {
     setEditingBudgets((prev) => ({
       ...prev,
-      [categoriaId]: value,
+      [categoriaId]: {
+        ...prev[categoriaId],
+        [field]: value,
+      },
     }));
   };
 
   const handleSave = async (categoriaId: string) => {
-    const valor = editingBudgets[categoriaId];
-    if (valor === undefined) return;
+    const editData = editingBudgets[categoriaId];
+    if (!editData) return;
+
+    const budget = getBudgetForCategoria(categoriaId);
 
     await upsertBudget.mutateAsync({
       categoria_id: categoriaId,
       mes,
       ano,
-      valor_previsto: valor,
+      valor_previsto: editData.previsto ?? budget?.valor_previsto ?? 0,
+      valor_realizado: editData.realizado ?? budget?.valor_realizado ?? 0,
     });
 
     setEditingBudgets((prev) => {
@@ -197,10 +203,11 @@ export default function Budget() {
                 <TableBody>
                   {categoriasSaida.map((categoria) => {
                     const budget = getBudgetForCategoria(categoria.id);
-                    const previsto = editingBudgets[categoria.id] ?? budget?.valor_previsto ?? 0;
-                    const realizado = budget?.valor_realizado ?? 0;
+                    const editData = editingBudgets[categoria.id];
+                    const previsto = editData?.previsto ?? budget?.valor_previsto ?? 0;
+                    const realizado = editData?.realizado ?? budget?.valor_realizado ?? 0;
                     const saldo = previsto - realizado;
-                    const hasChanges = editingBudgets[categoria.id] !== undefined;
+                    const hasChanges = !!editData;
 
                     return (
                       <TableRow key={categoria.id}>
@@ -219,12 +226,19 @@ export default function Budget() {
                             step="0.01"
                             min="0"
                             value={previsto}
-                            onChange={(e) => handleValueChange(categoria.id, parseFloat(e.target.value) || 0)}
+                            onChange={(e) => handleValueChange(categoria.id, "previsto", parseFloat(e.target.value) || 0)}
                             className="w-full"
                           />
                         </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(realizado)}
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={realizado}
+                            onChange={(e) => handleValueChange(categoria.id, "realizado", parseFloat(e.target.value) || 0)}
+                            className="w-full"
+                          />
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">

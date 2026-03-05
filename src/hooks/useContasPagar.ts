@@ -52,14 +52,9 @@ export function useContasPagar(isDespesaFixa?: boolean) {
     queryFn: async () => {
       if (!empresaAtiva?.id) return [];
       try {
-        // Tenta a busca completa com joins
         let query = supabase
           .from("contas_pagar")
-          .select(`
-            *,
-            fornecedor:fornecedores(id, razao_social),
-            categoria:categorias(id, nome, cor)
-          `)
+          .select("*")
           .eq("empresa_id", empresaAtiva.id);
 
         if (isDespesaFixa !== undefined) {
@@ -69,49 +64,19 @@ export function useContasPagar(isDespesaFixa?: boolean) {
         const { data, error } = await query;
 
         if (error) {
-          console.error("Erro na busca principal de contas_pagar:", error);
-
-          // Fallback 1: Busca simples sem joins, mas respeitando empresa e tipo
-          let fallbackQuery = supabase
-            .from("contas_pagar")
-            .select("*")
-            .eq("empresa_id", empresaAtiva.id);
-
-          if (isDespesaFixa !== undefined) {
-            fallbackQuery = fallbackQuery.eq("is_despesa_fixa", isDespesaFixa);
-          }
-
-          const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-
-          if (fallbackError) {
-            console.error("Erro no Fallback 1:", fallbackError);
-
-            // Fallback 2: Busca absoluta sem filtros (apenas empresa) para garantir que apareça algo
-            const { data: ultimateData, error: ultimateError } = await supabase
-              .from("contas_pagar")
-              .select("*")
-              .eq("empresa_id", empresaAtiva.id);
-
-            if (ultimateError) throw ultimateError;
-            return ultimateData as ContaPagar[];
-          }
-          return fallbackData as ContaPagar[];
+          console.error("Erro na busca de contas_pagar:", error);
+          throw error;
         }
 
-        // Ordenação manual no JS para evitar erro de coluna no DB
-        if (data) {
-          const sortedData = [...data].sort((a, b) => {
-            const dateA = a.data_vencimento || (a as any).vencimento || "";
-            const dateB = b.data_vencimento || (b as any).vencimento || "";
-            return dateA.localeCompare(dateB);
-          });
-          return sortedData as ContaPagar[];
-        }
+        if (!data) return [];
 
-        return data as ContaPagar[];
+        return [...data].sort((a, b) => {
+          const dateA = (a as any).data_vencimento || (a as any).vencimento || "";
+          const dateB = (b as any).data_vencimento || (b as any).vencimento || "";
+          return dateA.localeCompare(dateB);
+        }) as ContaPagar[];
       } catch (error) {
         console.error("Erro crítico no useContasPagar:", error);
-        // Retorna array vazio em vez de travar a tela
         return [];
       }
     },
@@ -168,6 +133,30 @@ export function useContasPagar(isDespesaFixa?: boolean) {
     },
   });
 
+  const updateConta = useMutation({
+    mutationFn: async ({ id, ...input }: ContaPagarInput & { id: string }) => {
+      const { data, error } = await supabase
+        .from("contas_pagar")
+        .update({
+          ...input,
+          vencimento: input.data_vencimento, // Fallback para schema legado
+        })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contas_pagar"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
+      toast({ title: "Conta atualizada!" });
+    },
+    onError: (error) => {
+      toast({ title: "Erro ao atualizar conta", description: error.message, variant: "destructive" });
+    },
+  });
+
   const deleteConta = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("contas_pagar").delete().eq("id", id);
@@ -187,6 +176,7 @@ export function useContasPagar(isDespesaFixa?: boolean) {
     contas,
     isLoading,
     createConta,
+    updateConta,
     marcarComoPago,
     deleteConta,
   };

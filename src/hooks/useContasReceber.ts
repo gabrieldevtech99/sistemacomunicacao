@@ -51,11 +51,7 @@ export function useContasReceber() {
       try {
         const { data, error } = await supabase
           .from("contas_receber")
-          .select(`
-            *,
-            cliente:clientes(id, nome),
-            categoria:categorias(id, nome, cor)
-          `)
+          .select("*")
           .eq("empresa_id", empresaAtiva.id);
 
         if (error) {
