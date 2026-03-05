@@ -439,6 +439,10 @@ export default function OrcamentoForm() {
     setIsLoading(true);
     try {
       const numOS = orcamentoCarregado.numero_manual || orcamentoCarregado.numero;
+      const doc = gerarPDFBlob();
+      if (!doc) {
+        throw new Error("Não foi possível gerar o PDF.");
+      }
       const pdfOutput = doc.output('blob');
       const filename = `orcamentos/orcamento-${numOS}-${Date.now()}.pdf`;
 
