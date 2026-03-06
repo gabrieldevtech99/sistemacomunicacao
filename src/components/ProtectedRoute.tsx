@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 const PERMISSION_ROUTES: Record<Permission, string> = {
     dashboard: "/",
     cadastros: "/clientes",
-    comercial: "/orcamentos",
+    comercial: "/ordem-servico",
+    orcamentos: "/orcamentos",
     financeiro: "/contas-pagar",
     producao: "/producao",
     configuracoes: "/configuracoes",
