@@ -65,7 +65,7 @@ const navigation: NavItem[] = [
   { name: "Orçamentos", href: "/orcamentos", icon: FileText, permission: "orcamentos" },
   { name: "Ordem de Serviço", href: "/ordem-servico", icon: Kanban, permission: "comercial" },
   { name: "Painel de OS", href: "/painel-os", icon: LayoutDashboard, permission: "comercial" },
-  { name: "Compras", href: "/compras", icon: ShoppingCart, permission: "comercial" },
+  { name: "Compras", href: "/compras", icon: ShoppingCart, permission: "compras" },
   { type: "section", name: "FINANCEIRO", permission: "financeiro" },
   { name: "Contas a Pagar", href: "/contas-pagar", icon: Wallet, permission: "financeiro" },
   { name: "Contas a Receber", href: "/contas-receber", icon: Receipt, permission: "financeiro" },

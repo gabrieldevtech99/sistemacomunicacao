@@ -10,6 +10,7 @@ const PERMISSION_ROUTES: Record<Permission, string> = {
     cadastros: "/clientes",
     comercial: "/ordem-servico",
     orcamentos: "/orcamentos",
+    compras: "/compras",
     financeiro: "/contas-pagar",
     producao: "/producao",
     configuracoes: "/configuracoes",

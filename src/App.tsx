@@ -57,7 +57,7 @@ const App = () => {
                   <Route path="/orcamentos/:id" element={<ProtectedRoute permission="comercial"><OrcamentoForm /></ProtectedRoute>} />
                   <Route path="/ordem-servico" element={<ProtectedRoute permission="comercial"><OrdemServico /></ProtectedRoute>} />
                   <Route path="/painel-os" element={<ProtectedRoute permission="comercial"><PainelOS /></ProtectedRoute>} />
-                  <Route path="/compras" element={<ProtectedRoute permission="comercial"><Compras /></ProtectedRoute>} />
+                  <Route path="/compras" element={<ProtectedRoute permission="compras"><Compras /></ProtectedRoute>} />
                   <Route path="/producao" element={<ProtectedRoute permission="producao"><Producao /></ProtectedRoute>} />
 
                   {/* Financeiro */}
