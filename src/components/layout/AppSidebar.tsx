@@ -177,7 +177,7 @@ export function AppSidebar() {
         )}
         style={{ background: "var(--gradient-sidebar)" }}
       >
-        <div className="flex flex-col h-screen overflow-hidden">
+        <div className="flex flex-col h-[100dvh] overflow-hidden">
           {/* Logo */}
           <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border flex-shrink-0">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-sidebar-primary text-sidebar-primary-foreground font-bold text-lg">
@@ -295,29 +295,26 @@ export function AppSidebar() {
 
           {/* Footer - fixed */}
           <div className="px-4 py-4 border-t border-sidebar-border flex-shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 px-3 py-2 w-full rounded-lg hover:bg-sidebar-accent transition-colors">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
-                    {user?.email?.charAt(0).toUpperCase() || "U"}
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-medium text-sidebar-foreground truncate">
-                      {user?.email?.split("@")[0] || "Usuário"}
-                    </p>
-                    <p className="text-xs text-sidebar-foreground/60 truncate">
-                      {user?.email || ""}
-                    </p>
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sair
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-3 px-3 py-2 w-full">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold flex-shrink-0">
+                {user?.email?.charAt(0).toUpperCase() || "U"}
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {user?.email?.split("@")[0] || "Usuário"}
+                </p>
+                <p className="text-xs text-sidebar-foreground/60 truncate">
+                  {user?.email || ""}
+                </p>
+              </div>
+              <button
+                onClick={handleLogout}
+                title="Sair"
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
