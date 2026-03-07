@@ -79,8 +79,8 @@ export default function Auth() {
     setIsSubmitting(false);
 
     if (error) {
-      if (error.message.includes("User already registered")) {
-        toast.error("Este email já está cadastrado");
+      if (error.message.includes("User already registered") || error.message.includes("already registered")) {
+        toast.error("Este email já está cadastrado. Tente fazer login ou use outro email.");
       } else {
         toast.error("Erro ao criar conta: " + error.message);
       }

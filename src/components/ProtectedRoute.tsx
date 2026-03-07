@@ -23,15 +23,34 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, permission, requireAdmin }: ProtectedRouteProps) {
-    const { user, loading: authLoading } = useAuth();
-    const { empresaAtiva, loading: empresaLoading } = useEmpresa();
+    const { user, loading: authLoading, signOut } = useAuth();
+    const { empresaAtiva, empresas, loading: empresaLoading } = useEmpresa();
     const { hasPermission, isAdmin, permissions, isLoading: permissionsLoading } = useUserPermissions();
     const location = useLocation();
+
+    const handleLogout = async () => {
+        await signOut();
+        window.location.href = '/auth';
+    };
 
     if (authLoading || empresaLoading || (user && empresaAtiva && permissionsLoading)) {
         return (
             <div className="flex h-screen w-screen items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    // User is logged in but has no empresa linked yet (trigger may have failed or still running)
+    if (user && !empresaLoading && empresas.length === 0) {
+        return (
+            <div className="flex flex-col h-screen w-screen items-center justify-center p-4 text-center">
+                <h1 className="text-2xl font-bold mb-2">Sem empresa vinculada</h1>
+                <p className="text-muted-foreground mb-4">Sua conta foi criada, mas ainda não foi vinculada a uma empresa.</p>
+                <p className="text-sm text-muted-foreground mb-6">Aguarde alguns instantes e tente novamente ou fale com o administrador.</p>
+                <Button variant="outline" onClick={handleLogout}>
+                    Sair e Voltar para Login
+                </Button>
             </div>
         );
     }
@@ -62,9 +81,9 @@ export function ProtectedRoute({ children, permission, requireAdmin }: Protected
                 <Button
                     variant="outline"
                     className="mt-6"
-                    onClick={() => window.location.href = '/auth'}
+                    onClick={handleLogout}
                 >
-                    Voltar para Login
+                    Sair e Voltar para Login
                 </Button>
             </div>
         );
