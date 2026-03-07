@@ -2,8 +2,12 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserPermissions, Permission } from "@/hooks/useUserPermissions";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const PERMISSION_ROUTES: Record<Permission, string> = {
     dashboard: "/",
@@ -21,6 +25,78 @@ interface ProtectedRouteProps {
     permission?: Permission;
     requireAdmin?: boolean;
 }
+
+function SemEmpresaVinculada({ onLogout }: { onLogout: () => void }) {
+    const { criarEmpresa, refetch } = useEmpresa();
+    const [nome, setNome] = useState("");
+    const [sigla, setSigla] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const handleCriar = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!nome || !sigla) {
+            toast.error("Preencha todos os campos");
+            return;
+        }
+        setLoading(true);
+        const { error } = await criarEmpresa(nome, sigla.toUpperCase());
+        setLoading(false);
+        if (error) {
+            toast.error("Erro ao criar empresa: " + error.message);
+        } else {
+            toast.success("Empresa criada! Carregando...");
+            await refetch();
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-screen w-screen items-center justify-center p-4">
+            <div className="w-full max-w-sm">
+                <div className="text-center mb-6">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground font-bold text-2xl mb-4">
+                        <Building2 className="h-8 w-8" />
+                    </div>
+                    <h1 className="text-2xl font-bold">Criar sua Empresa</h1>
+                    <p className="text-muted-foreground text-sm mt-2">
+                        Crie sua empresa para começar a usar o sistema.
+                    </p>
+                </div>
+                <form onSubmit={handleCriar} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="emp-nome">Nome da Empresa</Label>
+                        <Input
+                            id="emp-nome"
+                            placeholder="Ex: Minha Empresa"
+                            value={nome}
+                            onChange={(e) => setNome(e.target.value)}
+                            disabled={loading}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="emp-sigla">Sigla (2-3 letras)</Label>
+                        <Input
+                            id="emp-sigla"
+                            placeholder="Ex: ME"
+                            maxLength={3}
+                            value={sigla}
+                            onChange={(e) => setSigla(e.target.value.toUpperCase())}
+                            disabled={loading}
+                        />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                        {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando...</> : "Criar Empresa"}
+                    </Button>
+                </form>
+                <Button variant="ghost" className="w-full mt-3 text-muted-foreground" onClick={onLogout}>
+                    Sair da conta
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+
+
 
 export function ProtectedRoute({ children, permission, requireAdmin }: ProtectedRouteProps) {
     const { user, loading: authLoading, signOut } = useAuth();
@@ -41,18 +117,9 @@ export function ProtectedRoute({ children, permission, requireAdmin }: Protected
         );
     }
 
-    // User is logged in but has no empresa linked yet (trigger may have failed or still running)
+    // User is logged in but has no empresa linked yet
     if (user && !empresaLoading && empresas.length === 0) {
-        return (
-            <div className="flex flex-col h-screen w-screen items-center justify-center p-4 text-center">
-                <h1 className="text-2xl font-bold mb-2">Sem empresa vinculada</h1>
-                <p className="text-muted-foreground mb-4">Sua conta foi criada, mas ainda não foi vinculada a uma empresa.</p>
-                <p className="text-sm text-muted-foreground mb-6">Aguarde alguns instantes e tente novamente ou fale com o administrador.</p>
-                <Button variant="outline" onClick={handleLogout}>
-                    Sair e Voltar para Login
-                </Button>
-            </div>
-        );
+        return <SemEmpresaVinculada onLogout={handleLogout} />;
     }
 
     if (!user) {
