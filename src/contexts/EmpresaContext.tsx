@@ -39,15 +39,32 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Fetch only companies where the user is a member
-      const { data: userEmpresas, error: ueError } = await supabase
-        .from("empresa_usuarios")
-        .select("empresa_id")
-        .eq("user_id", user.id);
+      // Retry mechanism: On fresh signup, the DB trigger handle_new_user might take a moment to link the user.
+      // We will try up to 3 times with a 1-second delay if no empresa is found.
+      let empresaIds: string[] = [];
+      let attempts = 0;
+      const maxAttempts = 3;
 
-      if (ueError) throw ueError;
+      while (attempts < maxAttempts) {
+        const { data: userEmpresas, error: ueError } = await supabase
+          .from("empresa_usuarios")
+          .select("empresa_id")
+          .eq("user_id", user.id);
 
-      const empresaIds = userEmpresas?.map(ue => ue.empresa_id) || [];
+        if (ueError) throw ueError;
+
+        empresaIds = userEmpresas?.map(ue => ue.empresa_id) || [];
+
+        if (empresaIds.length > 0) {
+          break; // Found companies, exit retry loop
+        }
+
+        // Wait 1 second before retrying
+        attempts++;
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
 
       if (empresaIds.length === 0) {
         setEmpresas([]);
