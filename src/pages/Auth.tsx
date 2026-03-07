@@ -13,11 +13,11 @@ export default function Auth() {
   const navigate = useNavigate();
   const { user, loading, signIn, signUp } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Login form
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  
+
   // Signup form
   const [signupNome, setSignupNome] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
@@ -32,7 +32,7 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!loginEmail || !loginPassword) {
       toast.error("Preencha todos os campos");
       return;
@@ -58,7 +58,7 @@ export default function Auth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!signupNome || !signupEmail || !signupPassword || !signupConfirmPassword) {
       toast.error("Preencha todos os campos");
       return;
@@ -85,7 +85,7 @@ export default function Auth() {
         toast.error("Erro ao criar conta: " + error.message);
       }
     } else {
-      toast.success("Conta criada! Verifique seu email para confirmar o cadastro.");
+      toast.success("Conta criada com sucesso! Faça seu login.");
       setSignupNome("");
       setSignupEmail("");
       setSignupPassword("");
