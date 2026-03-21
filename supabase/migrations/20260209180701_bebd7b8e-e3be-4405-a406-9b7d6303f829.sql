@@ -1,0 +1,6 @@
+ALTER TABLE public.orcamentos
+  ADD COLUMN IF NOT EXISTS garantia_servico TEXT,
+  ADD COLUMN IF NOT EXISTS requisitos TEXT,
+  ADD COLUMN IF NOT EXISTS formas_pagamento TEXT,
+  ADD COLUMN IF NOT EXISTS chave_pix TEXT,
+  ADD COLUMN IF NOT EXISTS banco TEXT;

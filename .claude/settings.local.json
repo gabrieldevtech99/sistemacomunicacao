@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"senha\\\\|password\" C:Usersgabrieloliveira6013Downloadssistemacomunicacao-mainsistemacomunicacao-main --include=*.json --include=*.sql)"
+    ]
+  }
+}
